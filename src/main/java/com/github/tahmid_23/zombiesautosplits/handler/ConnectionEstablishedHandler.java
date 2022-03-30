@@ -9,18 +9,14 @@ import net.minecraftforge.fml.common.network.FMLNetworkEvent;
 
 import java.util.Objects;
 
-public class ConnectionEstablishedHandler {
-
-    private final ChannelHandler channelHandler;
-
-    public ConnectionEstablishedHandler(ChannelHandler channelHandler) {
-        this.channelHandler = Objects.requireNonNull(channelHandler, "channelHandler");
-    }
+public abstract class ConnectionEstablishedHandler {
 
     @SubscribeEvent
     public void onClientConnectedToServer(FMLNetworkEvent.ClientConnectedToServerEvent event) {
         ChannelPipeline pipeline = event.manager.channel().pipeline();
-        pipeline.addBefore("packet_handler", "zombies_auto_splits", channelHandler);
+        pipeline.addBefore("packet_handler", "zombies_auto_splits", createChannelHandler());
     }
+
+    protected abstract ChannelHandler createChannelHandler();
 
 }

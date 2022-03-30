@@ -5,8 +5,10 @@ import com.github.tahmid_23.zombiesautosplits.handler.ConnectionEstablishedHandl
 import com.github.tahmid_23.zombiesautosplits.handler.KeyInputHandler;
 import com.github.tahmid_23.zombiesautosplits.netty.NettyPacketHandler;
 import com.github.tahmid_23.zombiesautosplits.packet.AutoSplitPacketInterceptor;
+import com.github.tahmid_23.zombiesautosplits.packet.PacketInterceptor;
 import com.github.tahmid_23.zombiesautosplits.splitter.LiveSplitSplitter;
 import com.github.tahmid_23.zombiesautosplits.splitter.socket.LiveSplitSocketSplitter;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInboundHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
@@ -54,8 +56,13 @@ public class ZombiesAutoSplits {
 
     @Mod.EventHandler
     public void onFMLInitialization(FMLInitializationEvent event) {
-        ChannelInboundHandler channelHandler = new NettyPacketHandler(Collections.singleton(packetInterceptor));
-        MinecraftForge.EVENT_BUS.register(new ConnectionEstablishedHandler(channelHandler));
+        Iterable<PacketInterceptor> interceptors = Collections.singleton(packetInterceptor);
+        MinecraftForge.EVENT_BUS.register(new ConnectionEstablishedHandler() {
+            @Override
+            protected ChannelHandler createChannelHandler() {
+                return new NettyPacketHandler(interceptors);
+            }
+        });
         MinecraftForge.EVENT_BUS.register(new ConfigChangedHandler(this));
         MinecraftForge.EVENT_BUS.register(new KeyInputHandler(Minecraft.getMinecraft(), autoSplitsKeybind,
                 packetInterceptor));
