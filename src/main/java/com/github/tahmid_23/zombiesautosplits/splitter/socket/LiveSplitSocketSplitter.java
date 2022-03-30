@@ -2,12 +2,13 @@ package com.github.tahmid_23.zombiesautosplits.splitter.socket;
 
 import com.github.tahmid_23.zombiesautosplits.splitter.LiveSplitSplitter;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.Socket;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 
 public class LiveSplitSocketSplitter implements LiveSplitSplitter {
@@ -31,14 +32,20 @@ public class LiveSplitSocketSplitter implements LiveSplitSplitter {
 
     @SuppressWarnings("SameParameterValue")
     private CompletableFuture<Void> sendCommand(String command) {
-        return CompletableFuture.runAsync(() -> {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+
+        executor.execute(() -> {
             try (Socket socket = new Socket(host, port);
-                 PrintWriter writer = new PrintWriter(socket.getOutputStream())) {
-                writer.println(command + "\r\n");
+                 Writer writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))) {
+                writer.write(command + "\r\n");
+
+                future.complete(null);
             } catch (IOException e) {
-                throw new CompletionException(e);
+                future.completeExceptionally(e);
             }
-        }, executor);
+        });
+
+        return future;
     }
 
 }

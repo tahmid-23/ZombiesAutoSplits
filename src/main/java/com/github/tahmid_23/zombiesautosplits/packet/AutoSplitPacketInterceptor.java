@@ -8,6 +8,7 @@ import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatStyle;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.IChatComponent;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Objects;
 
@@ -15,12 +16,15 @@ public class AutoSplitPacketInterceptor implements PacketInterceptor {
 
     private final Minecraft minecraft;
 
+    private final Logger logger;
+
     private LiveSplitSplitter splitter;
 
     private boolean enabled = true;
 
-    public AutoSplitPacketInterceptor(Minecraft minecraft, LiveSplitSplitter splitter) {
+    public AutoSplitPacketInterceptor(Minecraft minecraft, Logger logger, LiveSplitSplitter splitter) {
         this.minecraft = Objects.requireNonNull(minecraft, "minecraft");
+        this.logger = Objects.requireNonNull(logger, "logger");
         this.splitter = Objects.requireNonNull(splitter, "splitter");
     }
 
@@ -33,8 +37,9 @@ public class AutoSplitPacketInterceptor implements PacketInterceptor {
         S29PacketSoundEffect soundEffect = (S29PacketSoundEffect) packet;
         if (soundEffect.getSoundName().equals("mob.wither.spawn")) {
             splitter.startOrSplit().exceptionally(throwable -> {
+                logger.warn("Failed to split", throwable);
                 minecraft.addScheduledTask(() -> {
-                    IChatComponent message = new ChatComponentText("Failed to start split!");
+                    IChatComponent message = new ChatComponentText("Failed to split!");
                     message.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED));
                     minecraft.thePlayer.addChatComponentMessage(message);
                 });

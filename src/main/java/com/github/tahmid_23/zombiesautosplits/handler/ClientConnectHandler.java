@@ -1,15 +1,11 @@
 package com.github.tahmid_23.zombiesautosplits.handler;
 
-import com.github.tahmid_23.zombiesautosplits.ZombiesAutoSplits;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelPipeline;
-import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.network.FMLNetworkEvent;
 
-import java.util.Objects;
-
-public abstract class ConnectionEstablishedHandler {
+public abstract class ClientConnectHandler {
 
     @SubscribeEvent
     public void onClientConnectedToServer(FMLNetworkEvent.ClientConnectedToServerEvent event) {
