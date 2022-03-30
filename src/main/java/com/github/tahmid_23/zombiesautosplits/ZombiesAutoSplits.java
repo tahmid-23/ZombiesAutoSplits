@@ -77,7 +77,7 @@ public class ZombiesAutoSplits {
     private LiveSplitSplitter createSplitter() {
         String host = config.getString("host", Configuration.CATEGORY_GENERAL, "localhost",
                 "The local IP to connect to LiveSplits");
-        int port = config.getInt("port", Configuration.CATEGORY_GENERAL, 16384, 0,
+        int port = config.getInt("port", Configuration.CATEGORY_GENERAL, 16834, 0,
                 65535, "The port to connect to LiveSplits");
 
         return new LiveSplitSocketSplitter(executor, host, port);
