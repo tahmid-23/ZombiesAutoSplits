@@ -35,7 +35,8 @@ public class AutoSplitPacketInterceptor implements PacketInterceptor {
         }
 
         S29PacketSoundEffect soundEffect = (S29PacketSoundEffect) packet;
-        if (soundEffect.getSoundName().equals("mob.wither.spawn")) {
+        if (soundEffect.getSoundName().equals("mob.wither.spawn")
+                || soundEffect.getSoundName().equals("mob.enderdragon.end")) {
             splitter.startOrSplit().exceptionally(throwable -> {
                 logger.warn("Failed to split", throwable);
                 minecraft.addScheduledTask(() -> {
