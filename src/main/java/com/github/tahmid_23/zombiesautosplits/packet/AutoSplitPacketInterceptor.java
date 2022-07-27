@@ -1,6 +1,14 @@
 package com.github.tahmid_23.zombiesautosplits.packet;
 
 import com.github.tahmid_23.zombiesautosplits.splitter.LiveSplitSplitter;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.string.StringDecoder;
+import io.netty.handler.codec.string.StringEncoder;
+import io.netty.util.CharsetUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.S29PacketSoundEffect;
@@ -40,9 +48,11 @@ public class AutoSplitPacketInterceptor implements PacketInterceptor {
             splitter.startOrSplit().exceptionally(throwable -> {
                 logger.warn("Failed to split", throwable);
                 minecraft.addScheduledTask(() -> {
-                    IChatComponent message = new ChatComponentText("Failed to split!");
-                    message.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED));
-                    minecraft.thePlayer.addChatComponentMessage(message);
+                    if (minecraft.thePlayer != null) {
+                        IChatComponent message = new ChatComponentText("Failed to split!");
+                        message.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED));
+                        minecraft.thePlayer.addChatComponentMessage(message);
+                    }
                 });
 
                 return null;

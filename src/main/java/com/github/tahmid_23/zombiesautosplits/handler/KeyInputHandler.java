@@ -9,6 +9,7 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.IChatComponent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Objects;
 
@@ -16,12 +17,15 @@ public class KeyInputHandler {
 
     private final Minecraft minecraft;
 
+    private final Logger logger;
+
     private final KeyBinding keyBinding;
 
     private final AutoSplitPacketInterceptor packetInterceptor;
 
-    public KeyInputHandler(Minecraft minecraft, KeyBinding keyBinding, AutoSplitPacketInterceptor packetInterceptor) {
+    public KeyInputHandler(Minecraft minecraft, Logger logger, KeyBinding keyBinding, AutoSplitPacketInterceptor packetInterceptor) {
         this.minecraft = Objects.requireNonNull(minecraft, "minecraft");
+        this.logger = Objects.requireNonNull(logger, "logger");
         this.keyBinding = Objects.requireNonNull(keyBinding, "keyBinding");
         this.packetInterceptor = Objects.requireNonNull(packetInterceptor, "packetInterceptor");
     }
@@ -30,7 +34,8 @@ public class KeyInputHandler {
     public void onKeyInput(InputEvent.KeyInputEvent event) {
         if (keyBinding.isPressed()) {
             IChatComponent toggledComponent;
-            if (packetInterceptor.toggle()) {
+            boolean toggled = packetInterceptor.toggle();
+            if (toggled) {
                 toggledComponent = new ChatComponentText("ON")
                         .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GREEN));
             }

@@ -1,11 +1,9 @@
 package com.github.tahmid_23.zombiesautosplits.splitter.socket;
 
 import com.github.tahmid_23.zombiesautosplits.splitter.LiveSplitSplitter;
+import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.*;
 import java.net.Socket;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -36,8 +34,10 @@ public class LiveSplitSocketSplitter implements LiveSplitSplitter {
 
         executor.execute(() -> {
             try (Socket socket = new Socket(host, port);
-                 Writer writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))) {
+                 OutputStream outputStream = socket.getOutputStream();
+                 Writer writer = new OutputStreamWriter(outputStream)) {
                 writer.write(command + "\r\n");
+                writer.flush();
 
                 future.complete(null);
             } catch (IOException e) {

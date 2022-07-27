@@ -2,21 +2,17 @@ pluginManagement {
     repositories {
         mavenCentral()
         gradlePluginPortal()
-
         maven("https://maven.minecraftforge.net") {
             name = "Forge"
         }
-
-        maven("https://jitpack.io/") {
-            name = "Jitpack"
+        maven("https://maven.fabricmc.net/") {
+            name = "Fabric"
         }
-    }
-
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.id == "net.minecraftforge.gradle.forge") {
-                useModule("com.github.asbyth:ForgeGradle:${requested.version}")
-            }
+        maven("https://maven.architectury.dev/") {
+            name = "Architectury"
+        }
+        maven("https://repo.essential.gg/repository/maven-public/") {
+            name = "Essential"
         }
     }
 }
