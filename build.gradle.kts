@@ -25,7 +25,6 @@ loom {
     forge {
         pack200Provider.set(Pack200Adapter())
     }
-    setupRemappedVariants.set(false)
 }
 
 val include: Configuration by configurations.creating
@@ -65,13 +64,15 @@ tasks.processResources {
 tasks.jar.get().enabled = false
 
 tasks.shadowJar {
-    archiveClassifier.set("")
     archiveBaseName.set("ZombiesAutoSplits")
+    archiveClassifier.set("shadow")
     configurations = listOf(include)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 tasks.remapJar {
     dependsOn(tasks.shadowJar)
+    archiveBaseName.set("ZombiesAutoSplits")
+    archiveClassifier.set("remapped")
     input.set(tasks.shadowJar.get().archiveFile)
 }
