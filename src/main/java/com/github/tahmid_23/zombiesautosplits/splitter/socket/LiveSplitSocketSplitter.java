@@ -28,6 +28,11 @@ public class LiveSplitSocketSplitter implements LiveSplitSplitter {
         return sendCommand("startorsplit");
     }
 
+    @Override
+    public void cancel() {
+
+    }
+
     @SuppressWarnings("SameParameterValue")
     private CompletableFuture<Void> sendCommand(String command) {
         CompletableFuture<Void> future = new CompletableFuture<>();

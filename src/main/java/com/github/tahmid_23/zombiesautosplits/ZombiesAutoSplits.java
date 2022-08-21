@@ -1,121 +1,150 @@
 package com.github.tahmid_23.zombiesautosplits;
 
-import com.github.tahmid_23.zombiesautosplits.handler.ConfigChangedHandler;
-import com.github.tahmid_23.zombiesautosplits.handler.KeyInputHandler;
-import com.github.tahmid_23.zombiesautosplits.handler.PacketClientConnectHandler;
-import com.github.tahmid_23.zombiesautosplits.handler.RenderTimeHandler;
-import com.github.tahmid_23.zombiesautosplits.packet.AutoSplitPacketInterceptor;
-import com.github.tahmid_23.zombiesautosplits.packet.PacketInterceptor;
+import com.github.steanky.ethylene.codec.yaml.YamlCodec;
+import com.github.steanky.ethylene.core.BasicConfigHandler;
+import com.github.steanky.ethylene.core.ConfigHandler;
+import com.github.steanky.ethylene.core.codec.ConfigCodec;
+import com.github.steanky.ethylene.core.processor.SyncFileConfigLoader;
+import com.github.tahmid_23.zombiesautosplits.config.ZombiesAutoSplitsConfig;
+import com.github.tahmid_23.zombiesautosplits.config.ZombiesAutoSplitsConfigProcessor;
+import com.github.tahmid_23.zombiesautosplits.event.ClientSoundEvents;
+import com.github.tahmid_23.zombiesautosplits.tick.KeyInputHandler;
+import com.github.tahmid_23.zombiesautosplits.packet.AutoSplitSoundInterceptor;
 import com.github.tahmid_23.zombiesautosplits.splitter.LiveSplitSplitter;
 import com.github.tahmid_23.zombiesautosplits.splitter.internal.InternalSplitter;
 import com.github.tahmid_23.zombiesautosplits.splitter.socket.LiveSplitSocketSplitter;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.settings.KeyBinding;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.config.Configuration;
-import net.minecraftforge.fml.client.registry.ClientRegistry;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import org.apache.logging.log4j.Logger;
-import org.lwjgl.input.Keyboard;
+import com.minenash.customhud.HudElements.supplier.StringSupplierElement;
+import com.minenash.customhud.mod_compat.CustomHudRegistry;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.KeyBinding;
+import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
-@Mod(modid = ZombiesAutoSplits.MODID, name = "Zombies AutoSplits", version = "1.0", clientSideOnly = true,
-guiFactory = "com.github.tahmid_23.zombiesautosplits.gui.ZombiesAutoSplitsGuiFactory")
-public class ZombiesAutoSplits {
+public class ZombiesAutoSplits implements ClientModInitializer {
 
     public static final String MODID = "zombiesautosplits";
 
-    public static ZombiesAutoSplits instance;
+    private static ZombiesAutoSplits instance = null;
 
-    private final KeyBinding autoSplitsKeybind = new KeyBinding("Toggle AutoSplits", Keyboard.KEY_SEMICOLON,
+    private final KeyBinding autoSplitsKeybind = new KeyBinding("Toggle AutoSplits", GLFW.GLFW_KEY_SEMICOLON,
             "Tahmid's Mods");
 
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-    private Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(MODID);
 
-    private Configuration config;
+    private final ConfigHandler configHandler = new BasicConfigHandler();
 
-    private AutoSplitPacketInterceptor packetInterceptor;
+    private final ConfigHandler.ConfigKey<ZombiesAutoSplitsConfig> configKey = new ConfigHandler.ConfigKey<>(ZombiesAutoSplitsConfig.class, "zombiesautosplits_config");
+
+    private final Collection<LiveSplitSplitter> splitters = new ArrayList<>(2);
 
     private InternalSplitter internalSplitter;
 
-    private RenderTimeHandler renderTimeHandler;
+    private final AutoSplitSoundInterceptor soundInterceptor = new AutoSplitSoundInterceptor(MinecraftClient.getInstance(), logger, splitters);
+
+    private ZombiesAutoSplitsConfig config;
 
     public static ZombiesAutoSplits getInstance() {
         return instance;
     }
 
-    @Mod.EventHandler
-    public void onFMLPreInitialization(FMLPreInitializationEvent event) {
-        logger = event.getModLog();
-
-        config = new Configuration(event.getSuggestedConfigurationFile());
-        config.load();
-
-        LiveSplitSplitter splitter = createSplitter();
-        packetInterceptor = new AutoSplitPacketInterceptor(Minecraft.getMinecraft(), logger, splitter);
-        if (splitter instanceof InternalSplitter) {
-            internalSplitter = (InternalSplitter) splitter;
-        }
+    private CompletableFuture<ZombiesAutoSplitsConfig> loadConfigFromFile() {
+        return configHandler.writeDefaults().thenCompose((unused) -> configHandler.loadData(configKey));
     }
 
-    @Mod.EventHandler
-    public void onFMLInitialization(FMLInitializationEvent event) {
-        Iterable<PacketInterceptor> interceptors = Collections.singleton(packetInterceptor);
-        MinecraftForge.EVENT_BUS.register(new PacketClientConnectHandler(interceptors));
-        MinecraftForge.EVENT_BUS.register(new ConfigChangedHandler(this));
-        MinecraftForge.EVENT_BUS.register(new KeyInputHandler(Minecraft.getMinecraft(), logger, autoSplitsKeybind,
-                packetInterceptor));
-
-        Minecraft minecraft = Minecraft.getMinecraft();
-        int color = 0xFFFFFF;
-        renderTimeHandler = new RenderTimeHandler(minecraft, minecraft.fontRendererObj, color);
-        if (internalSplitter != null) {
-            renderTimeHandler.setSplitter(internalSplitter);
-        }
-        MinecraftForge.EVENT_BUS.register(renderTimeHandler);
-
-        ClientRegistry.registerKeyBinding(autoSplitsKeybind);
-
-        instance = this;
-    }
-
-    public Configuration getConfig() {
+    public ZombiesAutoSplitsConfig getConfig() {
         return config;
     }
 
-    public void reloadConfig() {
-        if (internalSplitter != null) {
-            internalSplitter.cancel();
-            internalSplitter = null;
+    public void setConfig(ZombiesAutoSplitsConfig config) {
+        for (LiveSplitSplitter splitter : splitters) {
+            splitter.cancel();
         }
-        config.save();
+        splitters.clear();
+        internalSplitter = null;
 
-        LiveSplitSplitter splitter = createSplitter();
-        packetInterceptor.setSplitter(splitter);
-        if (splitter instanceof InternalSplitter) {
-            internalSplitter = (InternalSplitter) splitter;
-            renderTimeHandler.setSplitter(internalSplitter);
+        this.config = config;
+
+        if (config.useLiveSplits()) {
+            splitters.add(new LiveSplitSocketSplitter(executor, config.host(), config.port()));
+        }
+        if (config.useInternal()) {
+            splitters.add(internalSplitter = new InternalSplitter(executor));
         }
     }
 
-    private LiveSplitSplitter createSplitter() {
-        String host = config.getString("host", Configuration.CATEGORY_GENERAL, "localhost",
-                "The local IP to connect to LiveSplits");
-        int port = config.getInt("port", Configuration.CATEGORY_GENERAL, 16834, -1,
-                65535, "The port to connect to LiveSplits");
-        if (port == -1) {
-            return new InternalSplitter(executor);
-        }
-
-        return new LiveSplitSocketSplitter(executor, host, port);
+    public void saveConfig() {
+        configHandler.writeData(configKey, config).exceptionally(throwable -> {
+            logger.error("Failed to save config", throwable);
+            return null;
+        });
     }
 
+    @Override
+    public void onInitializeClient() {
+        ConfigCodec codec = new YamlCodec();
+        Path configPath = FabricLoader.getInstance().getConfigDir().resolve("zombiesautosplits");
+        String configFileName;
+        if (codec.getPreferredExtensions().isEmpty()) {
+            configFileName = "config";
+        }
+        else {
+            configFileName = "config." + codec.getPreferredExtensions().get(0);
+        }
+        try {
+            Files.createDirectories(configPath);
+        } catch (IOException e) {
+            logger.error("Failed to create config directory", e);
+            return;
+        }
+        configPath = configPath.resolve(configFileName);
+
+        ZombiesAutoSplitsConfig defaultConfig = new ZombiesAutoSplitsConfig(ZombiesAutoSplitsConfig.DEFAULT_HOST, ZombiesAutoSplitsConfig.DEFAULT_PORT, ZombiesAutoSplitsConfig.DEFAULT_USE_LIVE_SPLITS, ZombiesAutoSplitsConfig.DEFAULT_USE_INTERNAL);
+        configHandler.registerLoader(configKey, new SyncFileConfigLoader<>(new ZombiesAutoSplitsConfigProcessor(), defaultConfig, configPath, codec));
+
+        ZombiesAutoSplitsConfig loadedConfig;
+        try {
+            loadedConfig = loadConfigFromFile().get();
+        } catch (InterruptedException | ExecutionException e) {
+            logger.error("Failed to load config", e);
+            return;
+        }
+        setConfig(loadedConfig);
+
+        ClientTickEvents.END_CLIENT_TICK.register(new KeyInputHandler(autoSplitsKeybind, soundInterceptor));
+        ClientSoundEvents.PLAY_SOUND.register(soundInterceptor);
+
+        KeyBindingHelper.registerKeyBinding(autoSplitsKeybind);
+
+        CustomHudRegistry.registerElement("zombies_autosplits_timer", (_str) -> new StringSupplierElement(() -> {
+            if (internalSplitter == null) {
+                return "N/A";
+            }
+
+            long millis = internalSplitter.getMillis();
+            long minutesPart = millis / 60000;
+            long secondsPart = (millis % 60000) / 1000;
+            long tenthSecondsPart = (millis % 1000) / 100;
+            return String.format("%d:%02d:%d", minutesPart, secondsPart, tenthSecondsPart);
+        }));
+
+        instance = this;
+    }
 }

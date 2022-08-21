@@ -49,6 +49,7 @@ public class InternalSplitter implements LiveSplitSplitter {
         }
     }
 
+    @Override
     public void cancel() {
         lock.lock();
         try {

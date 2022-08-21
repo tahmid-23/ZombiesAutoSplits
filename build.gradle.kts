@@ -1,5 +1,3 @@
-import dev.architectury.pack200.java.Pack200Adapter
-
 @Suppress(
     "DSL_SCOPE_VIOLATION",
     "MISSING_DEPENDENCY_CLASS",
@@ -8,71 +6,98 @@ import dev.architectury.pack200.java.Pack200Adapter
 )
 plugins {
     java
-    id("gg.essential.loom") version "0.10.0.4"
-    id("dev.architectury.architectury-pack200") version "0.1.3"
-    id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("fabric-loom") version "0.12.56"
+}
+
+base {
+    archivesName.set("ZombiesAutoSplits")
 }
 
 version = "1.0"
 group = "com.github.tahmid_23"
 
-loom {
-    runConfigs {
-        named("client") {
-            ideConfigGenerated(true)
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+}
+
+val includeTransitive: Configuration by configurations.creating {
+    exclude("net.fabricmc", "fabric-loader")
+    exclude("it.unimi.dsi", "fastutil")
+}
+
+repositories {
+    maven("https://dl.cloudsmith.io/public/steank-f1g/ethylene/maven/") {
+        name = "Ethylene"
+    }
+    maven("https://jitpack.io/") {
+        name = "Jitpack"
+        content {
+            includeModule("com.github.tahmid-23", "CustomHUD")
         }
     }
-    forge {
-        pack200Provider.set(Pack200Adapter())
+    maven("https://api.modrinth.com/maven") {
+        name = "Modrinth"
+        content {
+            includeGroup("maven.modrinth")
+        }
+    }
+    maven("https://maven.shedaniel.me/") {
+        name = "Shedaniel"
+    }
+    maven("https://maven.terraformersmc.com/") {
+        name = "TerraformersMC"
     }
 }
 
-val include: Configuration by configurations.creating
-configurations.implementation.get().extendsFrom(include)
-
 dependencies {
-    minecraft("com.mojang:minecraft:1.8.9")
-    mappings("de.oceanlabs.mcp:mcp_stable:22-1.8.9")
-    forge("net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9")
-}
+    minecraft("com.mojang:minecraft:1.18.2")
+    mappings("net.fabricmc:yarn:1.18.2+build.4:v2")
+    modImplementation("net.fabricmc:fabric-loader:0.14.9")
+    modImplementation("net.fabricmc.fabric-api:fabric-api:0.58.0+1.18.2")
 
-tasks.compileJava {
-    sourceCompatibility = "1.8"
-    targetCompatibility = "1.8"
+    modImplementation("me.shedaniel.cloth:cloth-config-fabric:6.2.62") {
+        exclude("net.fabricmc.fabric-api")
+    }
+    modImplementation("com.terraformersmc:modmenu:3.2.3") {
+        exclude("net.fabricmc.fabric-api")
+    }
+    modImplementation("com.github.tahmid-23:CustomHUD:1.18-SNAPSHOT") {
+        exclude("net.fabricmc.fabric-api")
+    }
 
-    options.encoding = Charsets.UTF_8.name()
-    options.release.set(8)
+    implementation("com.github.steanky:ethylene-yaml:0.12.0")
+    includeTransitive("com.github.steanky:ethylene-yaml:0.12.0")
+
+    val resolutionResult = includeTransitive.incoming.resolutionResult
+    resolutionResult.allComponents {
+        when (val idCopy = id) {
+            resolutionResult.root.id -> {
+                return@allComponents
+            }
+            is ModuleComponentIdentifier -> {
+                include(idCopy.group, idCopy.module, idCopy.version)
+            }
+            is ProjectComponentIdentifier -> {
+                include(project(idCopy.projectPath))
+            }
+        }
+    }
 }
 
 tasks.processResources {
-    inputs.property("version", version)
-    inputs.property("mcversion", "1.8.9")
+    inputs.property("version", project.version)
 
-    from(sourceSets.main.get().resources.srcDirs) {
-        include("mcmod.info")
-
-        expand("version" to version, "mcversion" to "1.8.9")
+    filesMatching("fabric.mod.json") {
+        expand("version" to project.version)
     }
-
-    from(sourceSets.main.get().resources.srcDirs) {
-        exclude("mcmod.info")
-    }
-
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-tasks.jar.get().enabled = false
-
-tasks.shadowJar {
-    archiveBaseName.set("ZombiesAutoSplits")
-    archiveClassifier.set("shadow")
-    configurations = listOf(include)
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+tasks.jar {
+    from("LICENSE") {
+        rename { "${it}_${archiveBaseName.get()}"}
+    }
 }
 
 tasks.remapJar {
-    dependsOn(tasks.shadowJar)
-    archiveBaseName.set("ZombiesAutoSplits")
-    archiveClassifier.set("remapped")
-    input.set(tasks.shadowJar.get().archiveFile)
+    archiveAppendix.set("fabric")
 }

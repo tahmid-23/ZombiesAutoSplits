@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "zombiesautosplits",
+  "version": "${version}",
+
+  "name": "Zombies AutoSplits",
+  "description": "LiveSplits integration for Zombies",
+  "authors": ["thamid"],
+
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.github.tahmid_23.zombiesautosplits.ZombiesAutoSplits"
+    ],
+    "modmenu": [
+      "com.github.tahmid_23.zombiesautosplits.modmenu.ZombiesAutoSplitsModMenuApiImpl"
+    ]
+  },
+  "mixins": [
+    "zombiesautosplits.mixins.json"
+  ],
+
+  "depends": {
+    "cloth-config": ">=6.2.62",
+    "custom_hud": "*",
+    "fabricloader": ">=0.14.9",
+    "fabric": "*",
+    "minecraft": "1.18.2",
+    "modmenu": ">=3.2.3",
+    "java": ">=17"
+  }
+}
