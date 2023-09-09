@@ -30,6 +30,8 @@ public class AutoSplitPacketInterceptor implements PacketInterceptor {
 
     private boolean enabled = true;
 
+    private boolean AAr10 = false;
+
     public AutoSplitPacketInterceptor(Minecraft minecraft, Logger logger, LiveSplitSplitter splitter) {
         this.minecraft = Objects.requireNonNull(minecraft, "minecraft");
         this.logger = Objects.requireNonNull(logger, "logger");
@@ -44,7 +46,9 @@ public class AutoSplitPacketInterceptor implements PacketInterceptor {
 
         S29PacketSoundEffect soundEffect = (S29PacketSoundEffect) packet;
         if (soundEffect.getSoundName().equals("mob.wither.spawn")
-                || soundEffect.getSoundName().equals("mob.enderdragon.end")) {
+                || soundEffect.getSoundName().equals("mob.enderdragon.end")
+                || (soundEffect.getSoundName().equals("mob.guardian.curse") && !AAr10)) {
+            AAr10 = soundEffect.getSoundName().equals("mob.guardian.curse");
             splitter.startOrSplit().exceptionally(throwable -> {
                 logger.warn("Failed to split", throwable);
                 minecraft.addScheduledTask(() -> {
